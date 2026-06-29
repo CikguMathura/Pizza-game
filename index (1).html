@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>🍕 Aktiviti Pecahan Pizza – Tahun 4</title>
+  <style>
+    :root {
+      --cheese: #FDE68A;
+      --crust:  #C97B2A;
+      --sauce:  #D94F2B;
+      --tomato: #B91C1C;
+      --basil:  #15803D;
+      --ink:    #1C1412;
+      --cream:  #FFF8EC;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--cream);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: var(--ink);
+      padding: 16px 12px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* ── Header ── */
+    .eyebrow {
+      font-size: .7rem; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--basil);
+    }
+    h1 {
+      font-size: clamp(1.2rem, 5vw, 1.8rem); font-weight: 800;
+      color: var(--sauce); line-height: 1.2;
+    }
+    h1 span { color: var(--crust); }
+    .subtitle { font-size: .88rem; color: #5C4033; line-height: 1.5; margin-top: 4px; }
+    header { text-align: center; width: 100%; max-width: 440px; }
+
+    /* ── Mode buttons ── */
+    .mode-bar {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      justify-content: center; width: 100%; max-width: 440px;
+    }
+    .mode-btn {
+      flex: 1 1 100px; padding: 11px 6px;
+      border: 2.5px solid var(--crust); border-radius: 12px;
+      background: #fff; color: var(--crust);
+      font-size: .85rem; font-weight: 700;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .mode-btn.active { background: var(--crust); color: #fff; }
+
+    /* ── Canvas — single element, NOT positioned absolute ── */
+    #pizza {
+      display: block;
+      border-radius: 50%;
+      cursor: crosshair;
+      touch-action: none;
+      /* size set by JS, but reserve space with max-width */
+      max-width: 90vw;
+      max-height: 90vw;
+      box-shadow: 0 6px 24px rgba(0,0,0,.18);
+    }
+
+    /* ── Fraction readout ── */
+
+
+    /* ── Colour palette ── */
+    .palette {
+      display: flex; gap: 10px; align-items: center;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .palette label { font-size: .78rem; font-weight: 600; color: #5C4033; }
+    .swatch {
+      width: 34px; height: 34px; border-radius: 50%;
+      cursor: pointer; border: 3px solid transparent;
+      touch-action: manipulation; flex-shrink: 0;
+    }
+    .swatch.on { border-color: #111; transform: scale(1.2); }
+
+    /* ── Thickness slider ── */
+    .slider-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .8rem; color: #5C4033; font-weight: 600;
+    }
+    input[type=range] { width: 90px; accent-color: var(--sauce); }
+
+    /* ── Action buttons ── */
+    .controls {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      justify-content: center; width: 100%; max-width: 440px;
+    }
+    .btn {
+      flex: 1 1 130px; padding: 14px 10px; border: none;
+      border-radius: 16px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .btn:active { opacity: .8; }
+    .btn-clear { background: var(--tomato); color: #fff; }
+    .btn-guide { background: var(--basil);  color: #fff; }
+
+    /* ── Tips ── */
+    .tips {
+      width: 100%; max-width: 400px;
+      background: #fff; border: 2px solid var(--cheese);
+      border-radius: 16px; padding: 14px 18px;
+    }
+    .tips h2 {
+      font-size: .78rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--crust); margin-bottom: 8px;
+    }
+    .tips ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .tips li {
+      font-size: .82rem; color: #4B3325;
+      padding-left: 1.8em; position: relative; line-height: 1.45;
+    }
+    .tips li::before { content: attr(data-icon); position: absolute; left: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Matematik Tahun 4 · Pecahan</p>
+  <h1>🍕 <span>Aktiviti</span> Lukis Pizza</h1>
+  <p class="subtitle">Lukis garisan pada pizza untuk menunjukkan <strong>pecahan</strong>!<br>Contoh: 1/2, 1/4, 3/4…</p>
+</header>
+
+<div class="mode-bar">
+  <button class="mode-btn active" data-mode="line"  onclick="setMode('line')">✏️ Garisan Lurus</button>
+  <button class="mode-btn"        data-mode="free"  onclick="setMode('free')">🖊️ Lukis Bebas</button>
+  <button class="mode-btn"        data-mode="erase" onclick="setMode('erase')">🧼 Pemadam</button>
+</div>
+
+<!-- single canvas — no absolute positioning -->
+<canvas id="pizza"></canvas>
+
+
+
+<div class="palette">
+  <label>Warna:</label>
+  <div class="swatch on"  style="background:#D94F2B" data-col="#D94F2B" onclick="setColor(this)"></div>
+  <div class="swatch"     style="background:#1D4ED8" data-col="#1D4ED8" onclick="setColor(this)"></div>
+  <div class="swatch"     style="background:#15803D" data-col="#15803D" onclick="setColor(this)"></div>
+  <div class="swatch"     style="background:#7C3AED" data-col="#7C3AED" onclick="setColor(this)"></div>
+  <div class="swatch"     style="background:#111111" data-col="#111111" onclick="setColor(this)"></div>
+</div>
+
+<div class="slider-row">
+  <span>Tebal:</span>
+  <input type="range" id="thick" min="2" max="14" value="5"
+    oninput="lw=+this.value; document.getElementById('thickVal').textContent=this.value" />
+  <span id="thickVal">5</span>px
+</div>
+
+<div class="controls">
+  <button class="btn btn-clear" onclick="clearAll()">🗑️ Padam Semua</button>
+  <button class="btn btn-guide" onclick="toggleGuide()">📐 Panduan On/Off</button>
+</div>
+
+<div class="tips">
+  <h2>💡 Cara Bermain</h2>
+  <ul>
+    <li data-icon="1️⃣">Pilih mod lukisan di atas.</li>
+    <li data-icon="2️⃣">Lukis garisan <strong>merentasi pusat</strong> pizza untuk membahagi.</li>
+    <li data-icon="3️⃣">Tekan <em>Padam Semua</em> untuk mulakan semula.</li>
+  </ul>
+</div>
+
+<script>
+/* ── State ───────────────────────────────────────────── */
+const cvs  = document.getElementById('pizza');
+const ctx  = cvs.getContext('2d');
+
+
+let SIZE = 0, cx = 0, cy = 0, R = 0;
+let drawColor = '#D94F2B';
+let lw = 5;
+let mode = 'line';
+let showGuide = true;
+
+let isDown = false, sx = 0, sy = 0;
+let snapshot = null;   // pixel snapshot for rubber-band line
+let freePts  = [];
+let strokes  = [];     // stored for fraction counting & redraw
+
+/* ── Size the canvas ─────────────────────────────────── */
+function resize() {
+  const S = Math.min(360, window.innerWidth * 0.90) | 0;
+  cvs.width  = S;
+  cvs.height = S;
+  cvs.style.width  = S + 'px';
+  cvs.style.height = S + 'px';
+  SIZE = S;
+  cx = cy = S / 2;
+  R  = S / 2 - 5;
+  redrawAll();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ── Full redraw ─────────────────────────────────────── */
+function redrawAll() {
+  drawPizza();
+  strokes.forEach(paintStroke);
+}
+
+/* ── Draw pizza background ───────────────────────────── */
+function drawPizza() {
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  // crust
+  circle(cx, cy, R, '#C97B2A', true);
+  // sauce
+  circle(cx, cy, R * .88, '#D94F2B', true);
+  // cheese
+  circle(cx, cy, R * .80, '#FDE68A', true);
+
+  // toppings
+  [
+    [.25,.30,.06,'#166534'],[.68,.22,.06,'#166534'],
+    [.55,.60,.06,'#166534'],[.30,.65,.05,'#166534'],
+    [.70,.65,.05,'#15803D'],[.42,.42,.05,'#B91C1C'],
+    [.60,.40,.05,'#B91C1C'],[.35,.50,.04,'#B91C1C'],
+  ].forEach(([tx,ty,tr,tc]) => {
+    const ox = cx + (tx-.5)*2*R*.75, oy = cy + (ty-.5)*2*R*.75;
+    circle(ox, oy, tr*R, tc, true);
+    if (tc !== '#B91C1C') circle(ox, oy, tr*R*.38, '#000', true);
+  });
+
+  // crust dots
+  for (let a = 0; a < 360; a += 22) {
+    const r = a*Math.PI/180;
+    circle(cx+Math.cos(r)*R*.93, cy+Math.sin(r)*R*.93, 2.5, 'rgba(120,60,10,.35)', true);
+  }
+
+  // guide lines
+  if (showGuide) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.30)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,5]);
+    [0,45,90,135].forEach(deg => {
+      const r = deg*Math.PI/180;
+      ctx.beginPath();
+      ctx.moveTo(cx - Math.cos(r)*R, cy - Math.sin(r)*R);
+      ctx.lineTo(cx + Math.cos(r)*R, cy + Math.sin(r)*R);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // border
+  ctx.save();
+  ctx.strokeStyle = '#92400E'; ctx.lineWidth = 3; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+function circle(x, y, r, fill, doFill) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+  if (doFill) { ctx.fillStyle = fill; ctx.fill(); }
+  else        { ctx.strokeStyle = fill; ctx.stroke(); }
+}
+
+/* ── Paint one stored stroke ─────────────────────────── */
+function paintStroke(s) {
+  ctx.save();
+  // clip to pizza circle so lines stay inside
+  ctx.beginPath(); ctx.arc(cx, cy, R-1, 0, Math.PI*2); ctx.clip();
+  ctx.strokeStyle = s.color;
+  ctx.lineWidth   = s.width;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  if (s.pts && s.pts.length > 1) {
+    ctx.moveTo(s.pts[0].x, s.pts[0].y);
+    s.pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+  } else {
+    ctx.moveTo(s.x1, s.y1);
+    ctx.lineTo(s.x2, s.y2);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ── Pointer helpers ─────────────────────────────────── */
+function getXY(e) {
+  const rect = cvs.getBoundingClientRect();
+  const src  = e.touches?.length       ? e.touches[0]
+             : e.changedTouches?.length ? e.changedTouches[0]
+             : e;
+  const scaleX = SIZE / rect.width;
+  const scaleY = SIZE / rect.height;
+  return { x: (src.clientX - rect.left) * scaleX,
+           y: (src.clientY - rect.top)  * scaleY };
+}
+
+function inPizza(x, y) {
+  return (x-cx)**2 + (y-cy)**2 <= R*R;
+}
+
+/* ── Events ──────────────────────────────────────────── */
+function onDown(e) {
+  e.preventDefault();
+  const {x, y} = getXY(e);
+  if (!inPizza(x, y)) return;
+  isDown = true; sx = x; sy = y; freePts = [{x,y}];
+  if (mode === 'line') snapshot = ctx.getImageData(0, 0, SIZE, SIZE);
+}
+
+function onMove(e) {
+  e.preventDefault();
+  if (!isDown) return;
+  const {x, y} = getXY(e);
+
+  if (mode === 'free') {
+    if (!inPizza(x, y)) return;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R-1, 0, Math.PI*2); ctx.clip();
+    ctx.strokeStyle = drawColor; ctx.lineWidth = lw;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const prev = freePts[freePts.length-1];
+    ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(x, y); ctx.stroke();
+    ctx.restore();
+    freePts.push({x, y});
+
+  } else if (mode === 'erase') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+
+  } else if (mode === 'line') {
+    // rubber-band: restore snapshot then preview
+    ctx.putImageData(snapshot, 0, 0);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R-1, 0, Math.PI*2); ctx.clip();
+    ctx.strokeStyle = drawColor; ctx.lineWidth = lw; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(x, y); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function onUp(e) {
+  e.preventDefault();
+  if (!isDown) return;
+  isDown = false;
+  const {x, y} = getXY(e);
+
+  if (mode === 'line' && Math.hypot(x-sx, y-sy) > 4) {
+    strokes.push({x1:sx, y1:sy, x2:x, y2:y, color:drawColor, width:lw});
+    snapshot = null;
+
+  } else if (mode === 'free' && freePts.length > 1) {
+    const last = freePts[freePts.length-1];
+    strokes.push({x1:freePts[0].x, y1:freePts[0].y, x2:last.x, y2:last.y,
+                  color:drawColor, width:lw, pts:[...freePts]});
+
+  } else if (mode === 'erase') {
+    strokes = strokes.filter(s => {
+      if (s.pts) return !s.pts.some(p => Math.hypot(p.x-x, p.y-y) < 24);
+      return Math.hypot(s.x1-x, s.y1-y) > 24 && Math.hypot(s.x2-x, s.y2-y) > 24;
+    });
+    redrawAll();
+  }
+}
+
+cvs.addEventListener('mousedown',  onDown);
+cvs.addEventListener('mousemove',  onMove);
+cvs.addEventListener('mouseup',    onUp);
+cvs.addEventListener('mouseleave', e => { if (isDown) onUp(e); });
+cvs.addEventListener('touchstart',  onDown, {passive:false});
+cvs.addEventListener('touchmove',   onMove, {passive:false});
+cvs.addEventListener('touchend',    onUp,   {passive:false});
+
+
+
+/* ── Controls ────────────────────────────────────────── */
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === m));
+}
+
+function setColor(el) {
+  drawColor = el.dataset.col;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function clearAll() {
+  strokes = [];
+  redrawAll();
+}
+
+function toggleGuide() {
+  showGuide = !showGuide;
+  redrawAll();
+}
+</script>
+</body>
+</html>
